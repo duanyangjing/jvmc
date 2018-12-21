@@ -1,0 +1,53 @@
+Overview:
+-------------------------------------------------------------------------------
+Goal is to generate from source code the class file with the following structure:
+ClassFile {
+    u4             magic;
+    u2             minor_version;
+    u2             major_version;
+    u2             constant_pool_count;
+    cp_info        constant_pool[constant_pool_count-1];
+    u2             access_flags;
+    u2             this_class;
+    u2             super_class;
+    u2             interfaces_count;
+    u2             interfaces[interfaces_count];
+    u2             fields_count;
+    field_info     fields[fields_count];
+    u2             methods_count;
+    method_info    methods[methods_count];
+    u2             attributes_count;
+    attribute_info attributes[attributes_count];
+}
+
+There are mainly three components related to compiling C code. Constant pool, 
+methods, and fields. Constant pool is like a symbol table. Methods contain 
+information about all functions in the source code (like code and type signature). 
+Fields contain information about instance variables (like type and name). 
+The actual data is usually stored in the constant pool and methods, fields 
+area refer to their information as index in constant pool table.
+
+Constant pool:
+https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4
+
+Fields:
+https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.5
+
+Methods:
+https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.6
+
+
+
+A preliminary compilation model:
+-------------------------------------------------------------------------------
+There is no class structure for a given C source code, but we might as well treat
+each .c file as a class with the same name as the file. All structs are compiled
+to a (inner) class with all variables being public and no associated methods.
+Global variables are compiled as instance variables with public access modifier.
+All functions are compiled as public methods in the "file class".
+
+Pointers are not supported for now - it's not that straightforward.
+
+Other interesting thoughts - how to handle a local struct variable? In C it is
+allocated on stack, but Java doesn't seem to support the notion of stack allocation
+of objects? Need to further explore this.
