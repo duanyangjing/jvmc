@@ -1,1 +1,1 @@
-An attemp to compile a subset of C to JVM
+An attempt to compile a subset of C to JVM
