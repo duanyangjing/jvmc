@@ -1,6 +1,6 @@
 %option noyywrap
 %{
-	#include "ast.h"
+	#include "ast.hh"
 	#include "string.h"
 %}
 int             "int"
@@ -56,6 +56,7 @@ error           .
 
 {comment}	    ;
 {int}           {return INT;}
+{char}          {return CHAR;}
 {float}         {return FLOAT;}
 {void}	        {return VOID;}
 {if}            {return IF;}

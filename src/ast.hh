@@ -80,7 +80,6 @@ class Error : Expression {
 }
 
 //------------------------statements---------------------------
-// declarations are not included in the ast, they are in the symbol table
 class StatementBlock : Statement {
     vector<Statement*> statements;
 }
@@ -110,6 +109,23 @@ class VoidFunctionCall : Statement {
 
 class Return : Statement {
     Expression* exp; // null if it is a void return
+}
+
+
+//---------------------------declarations----------------------------
+// declarations ARE included in the ast, they are in the symbol table
+// This is intended to make it easier to handle scopes. Parser generates AST with
+// decls (and maybe scopes) then type checker can populate symbol table on
+// the fly which makes type checking easier to implement
+class VarDecl {
+    String name;
+    Type* typ;
+}
+
+class FunDecl {
+    String name;
+    vector<type> formals;
+    Type* ret;
 }
 
 
