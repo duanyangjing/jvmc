@@ -1,7 +1,8 @@
 %option noyywrap
 %{
 	#include "ast.hh"
-	#include "string.h"
+	#include <string>
+	#include "parser.hh"
 %}
 int             "int"
 char            "char"
@@ -35,6 +36,7 @@ times           "*"
 divide          "/"
 int-const       {digit}+
 flt-const       {digit}+(("."){digit}+)?
+chr-const       \'.\'
 str-const       \"([^"\n])*\"
 comment	        "/*"(([^*])|([*]+[^/*]))*("*")+"/"
 ws              [ \t]+
@@ -68,7 +70,7 @@ error           .
 {return}        {return RETURN;}
 
 {ID}            {
-	strcpy(yylval.str, yytext);
+	yylval.string = new std::string(yytext);
     return ID;
                 }
 			   
@@ -88,16 +90,20 @@ error           .
 {divide}        {return DIVIDE;}
 
 {int-const}	    {
-	yylval.expr = ABS_mkIntConstant(atoi(yytext));
-	return CONST;
+	yylval.string = new std::string(yytext);
+	return INTCONST;
 		}
 {flt-const}	    {
-	yylval.expr = ABS_mkFloatConstant(atof(yytext));
-	return CONST;
+	yylval.string = new std::string(yytext);
+	return FLTCONST;
+		        }
+{chr-const}	    {
+	yylval.string = new std::string(yytext);
+	return CHRCONST;
 		        }
 {str-const}	    {
-	yylval.expr = ABS_mkStrConstant(yytext);
-	return CONST;
+	yylval.string = new std::string(yytext);
+	return STRCONST;
 		        }
 
 {lparen}        {return LPAREN;}
