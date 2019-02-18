@@ -1,101 +1,74 @@
-#ifndef _AST_
-#define _AST_
-
-#include "common.hh"
-#include <vector>
-#include "type.hh"
+#include "ast.hh"
 #include <string>
+#include <iostream>
 
-class Statement;
-class Expression;
-class VariableDeclaration;
+std::string UopString[] = {"MINUS", "NOT"};
+std::string BopString[] = {"OR", "AND", "EQ", "NE", "LT", "LE", "GT", "GE", "PLUS", "MINUS", "TIMES", "DIV"}; 
 
-typedef std::vector<Statement*> StatementList;
-typedef std::vector<Expression*> ExpressionList;
-typedef std::vector<VariableDeclaration*> VarDeclList;
+std::string uopToString(UnaryOperator o) {
+    return UopString[o];
+}
 
-// root of the ast, populated by parser
-StatementList* ast;
+std::string bopToString(BinaryOperator o) {
+    return BopString[o];
+} 
 
-class Expression {};
+UnaryOperation::UnaryOperation(UnaryOperator op, Expression* e): op(op), e(e) {}
+std::ostream& operator << (std::ostream& os, const UnaryOperation& uop) {
+    return os << uopToString(uop.op) << "(" << uop.e << ")";
+}
 
-class Statement {};
+BinaryOperation::BinaryOperation(BinaryOperator op, Expression* l, Expression* r):
+    op(op), left(l), right(r) {}
+std::ostream& operator << (std::ostream& os, const BinaryOperation& bop) {
+    return os << bopToString(bop.op) << "(" << bop.left << ", " << bop.right << ")";
+}
 
-//------------------------expressions--------------------
-enum UnaryOperator {OP_UMINUS, OP_NOT};
-enum BinaryOperator {OP_OR, OP_AND, OP_EQ, OP_NE, OP_LT, OP_LE, OP_GT, OP_GE, 
-    OP_PLUS, OP_MINUS, OP_TIMES, OP_DIVIDE};
-    
-std::string UopToString(UnaryOperator o);
-std::string BopToString(BinaryOperator o); 
+IntConstant::IntConstant(int val): val(val) {}
+std::ostream& operator << (std::ostream& os, const IntConstant& c) {
+    return os << "Int(" << c.val << ")";
+}
 
-// unary operation
-class UnaryOperation : public Expression {
-    public:
-        UnaryOperator op;
-        Expression* e;
-        UnaryOperation(UnaryOperator op, Expression* e);
-        std::ostream& operator << (std::ostream& outs, const UnaryOperation& uop);
-};
+CharConstant::CharConstant(char val): val(val) {}
+std::ostream& operator << (std::ostream& os, const CharConstant& c) {
+    return os << "Char(" << c.val << ")";
+}
 
-// binary operation
-class BinaryOperation : public Expression {
-    public:
-        BinaryOperator op;
-        Expression* left;
-        Expression* right;
-        BinaryOperation(BinaryOperator op, Expression* l, Expression* r):
-            op(op), left(l), right(r) {}
-}; 
+FloatConstant::FloatConstant(float val): val(val) {}
+std::ostream& operator << (std::ostream& os, const FloatConstant& c) {
+    return os << "Float(" << c.val << ")";
+}
 
-class IntConstant : public Expression {
-    public:
-        int val;
-        IntConstant(int v): val(v) {}
-};
+StrConstant::StrConstant(std::string* val): val(val) {}
+std::ostream& operator << (std::ostream& os, const StrConstant& c) {
+    return os << "Char(" << c.val << ")";
+}
 
-class CharConstant : public Expression {
-    public:
-        char val;
-        CharConstant(char c): val(c) {}
-};
+StructAccess::StructAccess(Expression* base, std::string* field): 
+    base(base), field(field) {}
+std::ostream& operator << (std::ostream& os, const StructAccess& e) {
+    return os << "StructAccess(" << e.base << "," << e.field << ")";
+}
 
-class FloatConstant : public Expression {
-    public:
-        float val;
-        FloatConstant(float f): val(f) {}
-};
+ArrayAccess::ArrayAccess(Expression* base, Expression* index): 
+    base(base), index(index) {}
+std::ostream& operator << (std::ostream& os, const ArrayAccess& e) {
+    return os << "ArrayAccess(" << e.base << "," << e.index << ")";
+}
 
-class StrConstant : public Expression {
-    public:
-        std::string* val;
-        StrConstant(std::string* s): val(s) {}
-};
+VariableAccess::VariableAccess(std::string* name): name(name) {}
+std::ostream& operator << (std::ostream& os, const VariableAccess& e) {
+    return os << "VariableAccess(" << e.name << ")";
+}
 
-// lvalue: struct, array, var access
-class LValue : public Expression {};
-
-class StructAccess : public LValue {
-    public:
-        Expression* base;
-        std::string* field; 
-        StructAccess(Expression* base, std::string* field): 
-            base(base), field(field) {}
-};
-
-class ArrayAccess : public LValue {
-    public:
-        Expression* base;
-        Expression* index;
-        ArrayAccess(Expression* base, Expression* index): 
-            base(base), index(index) {}
-};
-
-class VariableAccess : public LValue {
-    public:
-        std::string* name;
-        VariableAccess(std::string* name): name(name) {}
-};
+FunctionCall::FunctionCall(std::string* name, ExpressionList* actuals):
+    name(name), actuals(actuals) {}
+std::ostream& operator << (std::ostream& os, const FunctionCall& e) {
+    os << "FunctionCall(";
+    for (auto actual : *e.actuals) {
+        os << actual << ",";
+    }
+}
 
 // function call
 class FunctionCall : public Expression {
@@ -183,7 +156,4 @@ class StructDeclaration: public Statement {
         VarDeclList* fields;
         StructDeclaration(std::string* name, VarDeclList* fields):
             name(name), fields(fields) {}
-}
-
-
-#endif
+};

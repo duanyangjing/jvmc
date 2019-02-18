@@ -5,7 +5,6 @@
 #include <ast.hh>
 #include <type.hh>
 static int linenumber = 1;
-StatementList* ast;
 %}
 
 %union {
