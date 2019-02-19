@@ -15,6 +15,7 @@ static int linenumber = 1;
     StatementList* stmts;
     Type* type;
     VarDeclList* vdecs;
+    VariableDeclaration* vdec;
 }
 
 /* terminal symbols. Type represents the object the lexer/parser builds for the token */
@@ -33,18 +34,21 @@ static int linenumber = 1;
 
 /* non-terminals, type represents the object parser builds for this non-terminal */
 %type <expr> const var_ref function_call
-%type <expr> init_array_dim init_expr init_expr1 init_expr2 init_expr3 funparam_array_dim_first
-%type <expr> expr expr1 expr2 expr3 expr4 expr5 expr6 expr7
+%type <expr> init_array_dim init_expr init_expr1 init_expr2 init_expr3
+%type <expr> funparam_array_dim_first
+%type <expr> expr expr1 expr2 expr3 expr4 expr5 expr6 expr7 expr8
 
-%type <stmts> program global_decl_list 
+%type <stmts> stmts program global_decl_list 
 %type <stmt> global_decl var_decl var_decl_init struct_decl function_decl
-%type <stmt> ite_stmt loop_stmt assign_stmt return_stmt stmt_block
+%type <stmt> stmt ite_stmt loop_stmt assign_stmt return_stmt stmt_block
 
 %type <type> primitive_type compound_type
 
 %type <vdecs> var_decl_list fun_decl_params
 %type <exprs> init_array_dims fun_call_params funparam_array_dims funparam_array_dim_rest
 
+%type <vdec> fun_decl_param
+			
 %start program
 
 %%
@@ -78,7 +82,7 @@ var_decl: primitive_type ID SEMICOLON {$$ = new VariableDeclaration($2, $1);}
         ;
         
 /* no init for compound var declarations*/
-var_decl_init: primitive_type ID ASSIGN const; 
+var_decl_init: primitive_type ID ASSIGN const
   {
       Statement* decl = new VariableDeclaration($2, $1);
       Statement* assign = new Assignment(new VariableAccess($2), $4);
@@ -140,7 +144,7 @@ init_array_dims: init_array_dims init_array_dim
                  }
                ;
 
-init_array_dim: LB init_expr RB; {$$ = $1;}
+init_array_dim: LB init_expr RB {$$ = $2;}
 
 /* exprs that can be evaluated at compile time, needed for array dim initialization */
 init_expr: init_expr1 {$$ = $1;}
@@ -238,7 +242,7 @@ function_decl: primitive_type ID LPAREN fun_decl_params RPAREN SEMICOLON
 /* int foo(int x, int y)
    int foo(int x[10])
    int foo(int x[][10]*/
-fun_decl_params:
+fun_decl_params: {$$ = new std::vector<VariableDeclaration*>();}
                | fun_decl_params COMMA fun_decl_param {$$->push_back($3); $$ = $1;}
                | fun_decl_param 
                  {
@@ -286,17 +290,17 @@ stmt: assign_stmt {$$ = $1;}
 
 /* no fancy assignments like 
    x += 1; x++; x=y=z*/
-assign_stmt: var_ref OP_ASSIGN expr SEMICOLON {$$ = new Assignment($1, $3);}
+assign_stmt: var_ref ASSIGN expr SEMICOLON {$$ = new Assignment($1, $3);}
            ; 
 
 /* no if...else if... according to specification */
+/* TODO: need to support single statement if else body*/
 ite_stmt: IF LPAREN expr RPAREN stmt_block {$$ = new Ite($3, $5, nullptr);}
         | IF LPAREN expr RPAREN stmt_block ELSE stmt_block {$$ = new Ite($3, $5, $7);}
         ;
 
-stmt_block: stmt {$$ = $1;}
-          | LBRACE stmts RBRACE {$$ = new Block($2);}
-		  ;
+stmt_block: LBRACE stmts RBRACE {$$ = new Block($2);}
+	  ;
 
 /* looks like C allows anything in these places, even statements in for_cond */
 loop_stmt: FOR LPAREN stmt SEMICOLON expr SEMICOLON stmt RPAREN stmt_block
@@ -308,7 +312,7 @@ loop_stmt: FOR LPAREN stmt SEMICOLON expr SEMICOLON stmt RPAREN stmt_block
 
 return_stmt: RETURN SEMICOLON {$$ = new Return(nullptr);}
            | RETURN expr SEMICOLON {$$ = new Return($2);}
-		   ;
+	   ;
 
 %%
 
