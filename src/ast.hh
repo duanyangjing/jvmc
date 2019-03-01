@@ -3,16 +3,20 @@
 
 #include "common.hh"
 #include <vector>
-#include "type.hh"
+
 #include <string>
+#include <iostream>
 
 class Statement;
 class Expression;
 class VariableDeclaration;
+class Type;
 
 typedef std::vector<Statement*> StatementList;
 typedef std::vector<Expression*> ExpressionList;
 typedef std::vector<VariableDeclaration*> VarDeclList;
+// TODO: better ways to avoid circular dependency?
+#include "type.hh"
 
 // root of the ast, populated by parser
 StatementList* ast;
@@ -35,7 +39,6 @@ public:
   UnaryOperator op;
   Expression* e;
   UnaryOperation(UnaryOperator op, Expression* e);
-  std::ostream& operator << (std::ostream& outs, const UnaryOperation& uop);
 };
 
 // binary operation
@@ -183,7 +186,7 @@ public:
   VarDeclList* fields;
   StructDeclaration(std::string* name, VarDeclList* fields):
     name(name), fields(fields) {}
-}
+};
 
 
 #endif

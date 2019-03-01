@@ -1,12 +1,33 @@
 /* ===== Definition Section ===== */
 
-%{
-#include <string>
-#include <ast.hh>
-#include <type.hh>
-static int linenumber = 1;
-%}
+%skeleton "lalr1.cc" /* -*- C++ -*- */
+%defines
+%define api.namespace {Front}
+%define parser_class_name {Parser}
 
+/* TODO: api.value.type variant gives type-safe union based on variant might worth refactoring later
+%define api.token.constructor
+%define api.value.type variant
+%define parse.assert 
+*/	
+
+%locations
+/* Dependencies of the types defined in union must be included/defined in this section*/
+%code requires {
+#include "type.hh"
+#include "ast.hh"
+}
+			
+%code {
+#include <string>
+#include "ast.hh"
+#include "type.hh"
+#include "parser.tab.hh"
+
+}
+
+/*			%define api.token.prefix {TOK_} */
+		       
 %union {
     std::string* string;
     Expression* expr;
@@ -316,21 +337,8 @@ return_stmt: RETURN SEMICOLON {$$ = new Return(nullptr);}
 
 %%
 
-#include "lex.yy.cc"
-main (argc, argv)
-int argc;
-char *argv[];
+void
+Front::Parser::error (const location_type& l, const std::string& m)
 {
-	yyin = fopen(argv[1],"r");
-	yyparse();
-	printf("%s\n", "Parsing completed. No errors found.");
-} 
-
-
-yyerror (mesg)
-char *mesg;
-{
-    printf("%s\t%d\t%s\t%s\n", "Error found in Line ", linenumber, "next token: ", yytext );
-    printf("%s\n", mesg);
-      //exit(1);
+  std::cerr << l << ": " << m << '\n';
 }

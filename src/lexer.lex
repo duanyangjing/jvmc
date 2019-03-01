@@ -1,9 +1,22 @@
 %option noyywrap
+%option c++
+
+
 %{
-	#include "ast.hh"
-	#include <string>
-	#include "parser.hh"
+   // lexer should be isolated from ast module, it just generates tokens
+  #include <string>
+  #include "parser.tab.hh"
+
+  // YY_DECL has original decl of the yylex signature generate by flex. This is
+  // overwritten because we'd like to put Scanner class in Front namespace
+  // Code run each time a pattern is matched.
+  #define YY_USER_ACTION  loc.columns(yyleng);
+  Front::Parser::semantic_type yylval;
+  using token = Front::Parser::token;
+
 %}
+			
+
 int             "int"
 char            "char"
 float           "float"
@@ -11,7 +24,7 @@ void            "void"
 if              "if"
 else            "else"
 while           "while"
-for	            "for"
+for	        "for"
 struct          "struct"
 union           "union"
 return          "return"
@@ -54,67 +67,67 @@ error           .
 
 %%
 
-{ws}            ;   /* do nothing with whitespace */
+{ws}            {loc.step();}
 
-{comment}	    ;
-{int}           {return INT;}
-{char}          {return CHAR;}
-{float}         {return FLOAT;}
-{void}	        {return VOID;}
-{if}            {return IF;}
-{else}          {return ELSE;}
-{while}         {return WHILE;}
-{for}      	    {return FOR;}  
-{struct}	    {structblock[scope+1] = true; return STRUCT;}
-{union}	        {structblock[scope+1] = true; return STRUCT;}
-{return}        {return RETURN;}
+{comment}	{}
+{int}           {return token::INT;}
+{char}          {return token::CHAR;}
+{float}         {return token::FLOAT;}
+{void}	        {return token::VOID;}
+{if}            {return token::IF;}
+{else}          {return token::ELSE;}
+{while}         {return token::WHILE;}
+{for}      	{return token::FOR;}  
+{struct}	{return token::STRUCT;}
+{union}	        {return token::STRUCT;}
+{return}        {return token::RETURN;}
 
 {ID}            {
 	yylval.string = new std::string(yytext);
-    return ID;
+    return token::ID;
                 }
 			   
-{assign}        {return ASSIGN;}
-{and}           {return AND;}
-{or}            {return OR;}
-{not}           {return NOT;}
-{eq}            {return EQ;}
-{ne}            {return NE;}
-{lt}            {return LT;}
-{gt}            {return GT;}
-{le}            {return LE;}
-{ge}            {return GE;}
-{plus}          {return PLUS;}
-{minus}         {return MINUS;}
-{times}         {return TIMES;}
-{divide}        {return DIVIDE;}
+{assign}        {return token::ASSIGN;}
+{and}           {return token::AND;}
+{or}            {return token::OR;}
+{not}           {return token::NOT;}
+{eq}            {return token::EQ;}
+{ne}            {return token::NE;}
+{lt}            {return token::LT;}
+{gt}            {return token::GT;}
+{le}            {return token::LE;}
+{ge}            {return token::GE;}
+{plus}          {return token::PLUS;}
+{minus}         {return token::MINUS;}
+{times}         {return token::TIMES;}
+{divide}        {return token::DIVIDE;}
 
 {int-const}	    {
 	yylval.string = new std::string(yytext);
-	return INTCONST;
+	return token::INTCONST;
 		}
 {flt-const}	    {
 	yylval.string = new std::string(yytext);
-	return FLTCONST;
+	return token::FLTCONST;
 		        }
 {chr-const}	    {
 	yylval.string = new std::string(yytext);
-	return CHRCONST;
+	return token::CHRCONST;
 		        }
 {str-const}	    {
 	yylval.string = new std::string(yytext);
-	return STRCONST;
+	return token::STRCONST;
 		        }
 
-{lparen}        {return LPAREN;}
-{rparen}        {return RPAREN;}
-{lbrace}        {scope++;return LBRACE;}
-{rbrace}        {scope--;return RBRACE;}
-{lbracket}      {return LB;}
-{rbracket}      {return RB;}
-{comma}         {return COMMA;}
-{semicolon}     {return SEMICOLON;}
-{dot}	        {return DOT;}
-{newline}       {linenumber+=1;}
-{error}         return ERROR;
+{lparen}        {return token::LPAREN;}
+{rparen}        {return token::RPAREN;}
+{lbrace}        {return token::LBRACE;}
+{rbrace}        {return token::RBRACE;}
+{lbracket}      {return token::LB;}
+{rbracket}      {return token::RB;}
+{comma}         {return token::COMMA;}
+{semicolon}     {return token::SEMICOLON;}
+{dot}	        {return token::DOT;}
+{newline}       {loc.lines(yyleng); loc.step();}
+{error}         {return token::ERROR;}
 %%

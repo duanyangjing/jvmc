@@ -4,6 +4,7 @@
 #include "ast.hh"
 #include <vector>
 #include "common.hh"
+#include <string>
 
 // I - int
 // C - char
@@ -11,7 +12,6 @@
 // V - void
 // E - error
 enum BASETYPE {I, C, F, V, E, STRUCT};
-
 
 class Type {
 private:
