@@ -2,27 +2,34 @@
 
 %skeleton "lalr1.cc" /* -*- C++ -*- */
 %defines
-%define api.namespace {Front}
-%define parser_class_name {Parser}
 
 /* TODO: api.value.type variant gives type-safe union based on variant might worth refactoring later
 %define api.token.constructor
 %define api.value.type variant
 %define parse.assert 
-*/	
+*/
+%define api.namespace {Front}
+%define parser_class_name {Parser}
+
 
 %locations
 /* Dependencies of the types defined in union must be included/defined in this section*/
 %code requires {
-#include "type.hh"
-#include "ast.hh"
+    #include "type.hh"
+    namespace Front {
+	class Scanner;
+	class Parser;
+    }
 }
-			
+
+%parse-param {Scanner* scanner}
+
 %code {
-#include <string>
-#include "ast.hh"
-#include "type.hh"
-#include "parser.tab.hh"
+    #include <string>
+    #include "ast.hh"
+    #include "type.hh"
+    #include "parser.tab.hh"
+    #include "driver.hh"
 
 }
 
@@ -340,5 +347,5 @@ return_stmt: RETURN SEMICOLON {$$ = new Return(nullptr);}
 void
 Front::Parser::error (const location_type& l, const std::string& m)
 {
-  std::cerr << l << ": " << m << '\n';
+    std::cerr << l << " Error: " << m << '\n';
 }

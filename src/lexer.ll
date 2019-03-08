@@ -1,21 +1,25 @@
 %option noyywrap
 %option c++
-
+%option yyclass="Front::Scanner"
 
 %{
    // lexer should be isolated from ast module, it just generates tokens
   #include <string>
-  #include "parser.tab.hh"
+  #include "scanner.hh"
 
   // YY_DECL has original decl of the yylex signature generate by flex. This is
   // overwritten because we'd like to put Scanner class in Front namespace
   // Code run each time a pattern is matched.
-  #define YY_USER_ACTION  loc.columns(yyleng);
-  Front::Parser::semantic_type yylval;
+  #undef YY_DECL
+  #define YY_DECL int Front::Scanner::yylex(Front::Parser::semantic_type* lval, Front::Parser::location_type* location)
+  
+  #define YY_USER_ACTION  loc->step(); loc->columns(yyleng);
+  
   using token = Front::Parser::token;
-
 %}
-			
+
+
+
 
 int             "int"
 char            "char"
@@ -67,7 +71,12 @@ error           .
 
 %%
 
-{ws}            {loc.step();}
+
+%{
+	yylval = lval;
+%}
+
+{ws}            {loc->step();}
 
 {comment}	{}
 {int}           {return token::INT;}
@@ -83,7 +92,7 @@ error           .
 {return}        {return token::RETURN;}
 
 {ID}            {
-	yylval.string = new std::string(yytext);
+	yylval->string = new std::string(yytext);
     return token::ID;
                 }
 			   
@@ -103,19 +112,19 @@ error           .
 {divide}        {return token::DIVIDE;}
 
 {int-const}	    {
-	yylval.string = new std::string(yytext);
+	yylval->string = new std::string(yytext);
 	return token::INTCONST;
 		}
 {flt-const}	    {
-	yylval.string = new std::string(yytext);
+	yylval->string = new std::string(yytext);
 	return token::FLTCONST;
 		        }
 {chr-const}	    {
-	yylval.string = new std::string(yytext);
+	yylval->string = new std::string(yytext);
 	return token::CHRCONST;
 		        }
 {str-const}	    {
-	yylval.string = new std::string(yytext);
+	yylval->string = new std::string(yytext);
 	return token::STRCONST;
 		        }
 
@@ -128,6 +137,6 @@ error           .
 {comma}         {return token::COMMA;}
 {semicolon}     {return token::SEMICOLON;}
 {dot}	        {return token::DOT;}
-{newline}       {loc.lines(yyleng); loc.step();}
+{newline}       {loc->lines(yyleng); loc->step();}
 {error}         {return token::ERROR;}
 %%
