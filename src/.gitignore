@@ -1,0 +1,10 @@
+*.o
+*.tab.cc
+*.tab.hh
+*.gch
+*.output
+stack.hh
+position.hh
+location.hh
+*.yy.cc
+jvmc

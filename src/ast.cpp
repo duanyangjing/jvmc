@@ -3,7 +3,7 @@
 #include <iostream>
 
 std::string UopString[] = {"MINUS", "NOT"};
-std::string BopString[] = {"OR", "AND", "EQ", "NE", "LT", "LE", "GT", "GE", "PLUS", "MINUS", "TIMES", "DIV"}; 
+std::string BopString[] = {"OR", "AND", "EQ", "NE", "LT", "LE", "GT", "GE", "PLUS", "MINUS", "TIMES", "DIV", "ASSIGN"}; 
 
 std::string uopToString(UnaryOperator o) {
   return UopString[o];
@@ -13,12 +13,12 @@ std::string bopToString(BinaryOperator o) {
   return BopString[o];
 } 
 
-UnaryOperation::UnaryOperation(UnaryOperator op, Expression* e): op(op), e(e) {}
+UnaryOperation::UnaryOperation(UnaryOperator op, Expr* e): op(op), e(e) {}
 std::ostream& operator << (std::ostream& os, const UnaryOperation& uop) {
   return os << uopToString(uop.op) << "(" << uop.e << ")";
 }
 
-BinaryOperation::BinaryOperation(BinaryOperator op, Expression* l, Expression* r):
+BinaryOperation::BinaryOperation(BinaryOperator op, Expr* l, Expr* r):
   op(op), left(l), right(r) {}
 std::ostream& operator << (std::ostream& os, const BinaryOperation& bop) {
   return os << bopToString(bop.op) << "(" << bop.left << ", " << bop.right << ")";
@@ -44,116 +44,56 @@ std::ostream& operator << (std::ostream& os, const StrConstant& c) {
   return os << "Char(" << c.val << ")";
 }
 
-StructAccess::StructAccess(Expression* base, std::string* field): 
+StructAccess::StructAccess(Expr* base, std::string* field): 
   base(base), field(field) {}
 std::ostream& operator << (std::ostream& os, const StructAccess& e) {
   return os << "StructAccess(" << e.base << "," << e.field << ")";
 }
 
-ArrayAccess::ArrayAccess(Expression* base, Expression* index): 
+ArrayAccess::ArrayAccess(Expr* base, Expr* index): 
   base(base), index(index) {}
 std::ostream& operator << (std::ostream& os, const ArrayAccess& e) {
   return os << "ArrayAccess(" << e.base << "," << e.index << ")";
 }
 
-VariableAccess::VariableAccess(std::string* name): name(name) {}
-std::ostream& operator << (std::ostream& os, const VariableAccess& e) {
-  return os << "VariableAccess(" << e.name << ")";
+VarAccess::VarAccess(std::string* name): name(name) {}
+std::ostream& operator << (std::ostream& os, const VarAccess& e) {
+  return os << "VarAccess(" << e.name << ")";
 }
 
-FunctionCall::FunctionCall(std::string* name, ExpressionList* actuals):
+FunCall::FunCall(std::string* name, ExprList* actuals):
   name(name), actuals(actuals) {}
-std::ostream& operator << (std::ostream& os, const FunctionCall& e) {
+std::ostream& operator << (std::ostream& os, const FunCall& e) {
   os << "FunctionCall(";
   for (auto actual : *e.actuals) {
     os << actual << ",";
   }
 }
 
-// function call
-class FunctionCall : public Expression {
-public:
-  std::string* name;
-  ExpressionList* actuals;
-  FunctionCall(std::string* name, ExpressionList* actuals):
-    name(name), actuals(actuals) {}
-};
+Assignment::Assignment(Expr* lv, Expr* r):
+  lvalue(lv), r(r) {}
 
-// both an expression and statement, e.g. x = (y = 1) here y = 1 evaluates to 1
-class Assignment : public Expression, public Statement {
-public:
-  LValue* lvalue;       
-  Expression* r;
-  Assignment(LValue* lv, Expression* r): lvalue(lv), r(r) {}
-};
 
-class Error : public Expression {};
+//------------------------stmts---------------------------
+Block::Block(StmtList* stmts): stmts(stmts) {}
 
-//------------------------statements---------------------------
-class Block : public Statement {
-public:
-  StatementList* statements;
-  Block(StatementList* statements): statements(statements) {}
-};
+Ite::Ite(Expr* condition, Stmt* t, Stmt* f):
+  condition(condition), t(t), f(f) {}
 
-//  if then else
-class Ite : public Statement {
-public:
-  Expression* condition;
-  Statement* t; // could be a single statement, or a block statement that contains stmts
-  Statement* f;
-  Ite(Expression* condition, Statement* t, Statement* f):
-    condition(condition), t(t), f(f) {}
-};
- 
-class While : public Statement {
-public:
-  Expression* condition;
-  Statement* body;
-  While(Expression* condition, Statement* body): 
-    condition(condition), body(body) {}
-};
+While::While(Expr* condition, Stmt* body): 
+  condition(condition), body(body) {}
 
-class For : public Statement {
-public:
-  Statement* init;
-  Expression* condition;
-  Statement* increment;
-  Statement* body;
-  For(Statement* init, Expression* condition, Statement* increment, Statement* body):
-    init(init), condition(condition), increment(increment), body(body) {}
-};
+For::For(Stmt* init, Expr* cond, Stmt* inc, Stmt* body):
+  init(init), cond(cond), inc(inc), body(body) {}
 
-class Return : public Statement {
-public:
-  Expression* exp; // null if it is a void return
-  Return(Expression* e): exp(e) {}
-};
-
+Return::Return(Expr* e): exp(e) {}
 
 //---------------------------declarations----------------------------
-class VariableDeclaration : public Statement {
-public:
-  std::string* name;
-  Type* type;
-  VariableDeclaration(std::string* name, Type* type):
-    name(name), type(type) {}
-};
+VarDecl::VarDecl(std::string* name, Type* type, Expr* initValue):
+    name(name), type(type), initValue(initValue) {}
 
-class FunctionDeclaration : public Statement {
-public:
-  std::string* name;
-  VarDeclList* formals;
-  Type* returnType;
-  StatementList* body;
-  FunctionDeclaration(std::string* name, VarDeclList* formals, Type* returnType, StatementList* body):
-    name(name), formals(formals), returnType(returnType), body(body) {}
-};
+FunDecl::FunDecl(std::string* name, VarDeclList* formals, Type* returnType, Stmt* body):
+  name(name), formals(formals), returnType(returnType), body(body) {}
 
-class StructDeclaration: public Statement {
-public:
-  std::string* name;
-  VarDeclList* fields;
-  StructDeclaration(std::string* name, VarDeclList* fields):
-    name(name), fields(fields) {}
-};
+StructDecl::StructDecl(std::string* name, VarDeclList* fields):
+  name(name), fields(fields) {}

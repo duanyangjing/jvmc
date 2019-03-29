@@ -21,7 +21,7 @@ namespace Front {
       // actually a location class in location.hh
       loc = new Front::Parser::location_type();
     }
-    ~Scanner();
+    ~Scanner(){}
 
     int yylex(Front::Parser::semantic_type* lval,
 	      Front::Parser::location_type* location);

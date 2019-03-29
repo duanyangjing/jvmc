@@ -7,185 +7,175 @@
 #include <string>
 #include <iostream>
 
-class Statement;
-class Expression;
-class VariableDeclaration;
+class Stmt;
+class Expr;
+class VarDecl;
 class Type;
 
-typedef std::vector<Statement*> StatementList;
-typedef std::vector<Expression*> ExpressionList;
-typedef std::vector<VariableDeclaration*> VarDeclList;
+typedef std::vector<Stmt*> StmtList;
+typedef std::vector<Expr*> ExprList;
+typedef std::vector<VarDecl*> VarDeclList;
 // TODO: better ways to avoid circular dependency?
 #include "type.hh"
 
 // root of the ast, populated by parser
-StatementList* ast;
 
-class Expression {};
+class Stmt {};
 
-class Statement {};
-
-//------------------------expressions--------------------
+// expr is a valued stmt, same as clang treatment
+class Expr : public Stmt {};
+//------------------------exprs--------------------
 enum UnaryOperator {OP_UMINUS, OP_NOT};
 enum BinaryOperator {OP_OR, OP_AND, OP_EQ, OP_NE, OP_LT, OP_LE, OP_GT, OP_GE, 
-		     OP_PLUS, OP_MINUS, OP_TIMES, OP_DIVIDE};
+		     OP_PLUS, OP_MINUS, OP_TIMES, OP_DIVIDE, OP_ASSIGN};
     
 std::string uopToString(UnaryOperator o);
 std::string bopToString(BinaryOperator o); 
 
 // unary operation
-class UnaryOperation : public Expression {
+class UnaryOperation : public Expr {
 public:
   UnaryOperator op;
-  Expression* e;
-  UnaryOperation(UnaryOperator op, Expression* e);
+  Expr* e;
+  UnaryOperation(UnaryOperator, Expr*);
 };
 
 // binary operation
-class BinaryOperation : public Expression {
+class BinaryOperation : public Expr {
 public:
   BinaryOperator op;
-  Expression* left;
-  Expression* right;
-  BinaryOperation(BinaryOperator op, Expression* l, Expression* r):
-    op(op), left(l), right(r) {}
+  Expr* left;
+  Expr* right;
+  BinaryOperation(BinaryOperator, Expr*, Expr*);
 }; 
 
-class IntConstant : public Expression {
+class IntConstant : public Expr {
 public:
   int val;
-  IntConstant(int v): val(v) {}
+  IntConstant(int);
 };
 
-class CharConstant : public Expression {
+class CharConstant : public Expr {
 public:
   char val;
-  CharConstant(char c): val(c) {}
+  CharConstant(char);
 };
 
-class FloatConstant : public Expression {
+class FloatConstant : public Expr {
 public:
   float val;
-  FloatConstant(float f): val(f) {}
+  FloatConstant(float);
 };
 
-class StrConstant : public Expression {
+class StrConstant : public Expr {
 public:
   std::string* val;
-  StrConstant(std::string* s): val(s) {}
+  StrConstant(std::string*);
 };
 
 // lvalue: struct, array, var access
-class LValue : public Expression {};
 
-class StructAccess : public LValue {
+class StructAccess : public Expr {
 public:
-  Expression* base;
-  std::string* field; 
-  StructAccess(Expression* base, std::string* field): 
-    base(base), field(field) {}
+  Expr* base;
+  std::string* field;
+  StructAccess(Expr*, std::string*);
 };
 
-class ArrayAccess : public LValue {
+class ArrayAccess : public Expr {
 public:
-  Expression* base;
-  Expression* index;
-  ArrayAccess(Expression* base, Expression* index): 
-    base(base), index(index) {}
+  Expr* base;
+  Expr* index;
+  ArrayAccess(Expr*, Expr*);
 };
 
-class VariableAccess : public LValue {
+class VarAccess : public Expr {
 public:
   std::string* name;
-  VariableAccess(std::string* name): name(name) {}
+  VarAccess(std::string*);
 };
 
 // function call
-class FunctionCall : public Expression {
+class FunCall : public Expr {
 public:
   std::string* name;
-  ExpressionList* actuals;
-  FunctionCall(std::string* name, ExpressionList* actuals):
-    name(name), actuals(actuals) {}
+  ExprList* actuals;
+  FunCall(std::string*, ExprList*);
 };
 
-// both an expression and statement, e.g. x = (y = 1) here y = 1 evaluates to 1
-class Assignment : public Expression, public Statement {
+// both an expr and stmt, e.g. x = (y = 1) here y = 1 evaluates to 1
+class Assignment : public Expr {
 public:
-  LValue* lvalue;       
-  Expression* r;
-  Assignment(LValue* lv, Expression* r): lvalue(lv), r(r) {}
+  Expr* lvalue; // must be an lvalue
+  Expr* r;
+  Assignment(Expr*, Expr*);
 };
 
-class Error : public Expression {};
 
-//------------------------statements---------------------------
-class Block : public Statement {
+//------------------------stmts---------------------------
+// Use block to indicate the need to enter a scope.. So fundecl, for, while
+// all take a block stmt
+class Block : public Stmt {
 public:
-  StatementList* statements;
-  Block(StatementList* statements): statements(statements) {}
+  StmtList* stmts;
+  Block(StmtList*);
 };
 
 //  if then else
-class Ite : public Statement {
+class Ite : public Stmt {
 public:
-  Expression* condition;
-  Statement* t; // could be a single statement, or a block statement that contains stmts
-  Statement* f;
-  Ite(Expression* condition, Statement* t, Statement* f):
-    condition(condition), t(t), f(f) {}
+  Expr* condition;
+  Stmt* t; // could be a single stmt, or a block stmt that contains stmts
+  Stmt* f;
+  Ite(Expr*, Stmt*, Stmt*);
 };
  
-class While : public Statement {
+class While : public Stmt {
 public:
-  Expression* condition;
-  Statement* body;
-  While(Expression* condition, Statement* body): 
-    condition(condition), body(body) {}
+  Expr* condition;
+  Stmt* body;
+  While(Expr*, Stmt*);
 };
 
-class For : public Statement {
+class For : public Stmt {
 public:
-  Statement* init;
-  Expression* condition;
-  Statement* increment;
-  Statement* body;
-  For(Statement* init, Expression* condition, Statement* increment, Statement* body):
-    init(init), condition(condition), increment(increment), body(body) {}
+  Stmt* init;
+  Expr* cond;
+  Stmt* inc;
+  Stmt* body;
+  For(Stmt*, Expr*, Stmt*, Stmt*);
 };
 
-class Return : public Statement {
+class Return : public Stmt {
 public:
-  Expression* exp; // null if it is a void return
-  Return(Expression* e): exp(e) {}
+  Expr* exp; // null if it is a void return
+  Return(Expr*);
 };
 
 
 //---------------------------declarations----------------------------
-class VariableDeclaration : public Statement {
+class VarDecl : public Stmt {
 public:
   std::string* name;
   Type* type;
-  VariableDeclaration(std::string* name, Type* type):
-    name(name), type(type) {}
+  Expr* initValue;
+  VarDecl(std::string*, Type*, Expr*);
 };
 
-class FunctionDeclaration : public Statement {
+class FunDecl : public Stmt {
 public:
   std::string* name;
   VarDeclList* formals;
   Type* returnType;
-  StatementList* body;
-  FunctionDeclaration(std::string* name, VarDeclList* formals, Type* returnType, StatementList* body):
-    name(name), formals(formals), returnType(returnType), body(body) {}
+  Stmt* body;
+  FunDecl(std::string*, VarDeclList*, Type*, Stmt*);
 };
 
-class StructDeclaration: public Statement {
+class StructDecl: public Stmt {
 public:
   std::string* name;
   VarDeclList* fields;
-  StructDeclaration(std::string* name, VarDeclList* fields):
-    name(name), fields(fields) {}
+  StructDecl(std::string*, VarDeclList*);
 };
 
 

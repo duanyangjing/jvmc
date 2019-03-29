@@ -73,6 +73,8 @@ error           .
 
 
 %{
+// lval was passed in from parser, this makes the lexer use the semantic types
+// passed in from parser.
 	yylval = lval;
 %}
 

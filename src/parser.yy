@@ -22,14 +22,21 @@
     }
 }
 
+/* parser constructor takes a pointer to scanner */
 %parse-param {Scanner* scanner}
 
 %code {
     #include <string>
+    #include <vector>
     #include "ast.hh"
     #include "type.hh"
     #include "parser.tab.hh"
     #include "driver.hh"
+
+/* generated parser calls yylex to interact with scanner, now it's a class with
+   a field being the pointer to the scanner */
+    #undef yylex
+    #define yylex scanner->yylex
 
 }
 
@@ -37,13 +44,13 @@
 		       
 %union {
     std::string* string;
-    Expression* expr;
-    ExpressionList* exprs;
-    Statement* stmt;
-    StatementList* stmts;
+    Expr* expr;
+    ExprList* exprs;
+    Stmt* stmt;
+    StmtList* stmts;
     Type* type;
     VarDeclList* vdecs;
-    VariableDeclaration* vdec;
+    VarDecl* vdec;
 }
 
 /* terminal symbols. Type represents the object the lexer/parser builds for the token */
@@ -61,13 +68,14 @@
 
 
 /* non-terminals, type represents the object parser builds for this non-terminal */
-%type <expr> const var_ref function_call
+%type <expr> var_ref
+%type <expr> const function_call
 %type <expr> init_array_dim init_expr init_expr1 init_expr2 init_expr3
 %type <expr> funparam_array_dim_first
 %type <expr> expr expr1 expr2 expr3 expr4 expr5 expr6 expr7 expr8
 
 %type <stmts> stmts program global_decl_list 
-%type <stmt> global_decl var_decl var_decl_init struct_decl function_decl
+%type <stmt> global_decl struct_decl function_decl
 %type <stmt> stmt ite_stmt loop_stmt assign_stmt return_stmt stmt_block
 
 %type <type> primitive_type compound_type
@@ -75,16 +83,16 @@
 %type <vdecs> var_decl_list fun_decl_params
 %type <exprs> init_array_dims fun_call_params funparam_array_dims funparam_array_dim_rest
 
-%type <vdec> fun_decl_param
+%type <vdec> fun_decl_param var_decl var_decl_init
 			
 %start program
 
 %%
 
-program: global_decl_list {ast = $1;}
+program: global_decl_list {$$ = $1;}
        ;
 
-global_decl_list: global_decl {$$ = new std::vector<Statement*>(); $$->push_back($1);}
+global_decl_list: global_decl {$$ = new std::vector<Stmt*>(); $$->push_back($1);}
                 | global_decl_list global_decl {$1->push_back($2); $$ = $1;}
                 ;
 
@@ -95,35 +103,29 @@ global_decl: var_decl {$$ = $1;}
            ;
 
 /* no multiple declarations like int x,y,z */
-var_decl: primitive_type ID SEMICOLON {$$ = new VariableDeclaration($2, $1);}
-        | compound_type ID SEMICOLON {$$ = new VariableDeclaration($2, $1);}
+var_decl: primitive_type ID SEMICOLON {$$ = new VarDecl($2, $1, nullptr);}
+        | compound_type ID SEMICOLON {$$ = new VarDecl($2, $1, nullptr);}
         | primitive_type ID init_array_dims SEMICOLON 
           {
-              $1.setDimensions($3);
-              $$ = new VariableDeclaration($2, $1);
+              $1->setDimensions($3);
+              $$ = new VarDecl($2, $1, nullptr);
           }
         | compound_type ID init_array_dims SEMICOLON 
           {
-              $1.setDimensions($3);
-              $$ = new VariableDeclaration($2, $1);
+              $1->setDimensions($3);
+              $$ = new VarDecl($2, $1, nullptr);
           }
         ;
         
 /* no init for compound var declarations*/
-var_decl_init: primitive_type ID ASSIGN const
+var_decl_init: primitive_type ID ASSIGN expr
   {
-      Statement* decl = new VariableDeclaration($2, $1);
-      Statement* assign = new Assignment(new VariableAccess($2), $4);
-      /* TODO: dynamic or stack allocation? */
-      StatementList* block = new std::vector<Statement*>(2);
-      block->push_back(decl);
-      block->push_back(assign); 
-      $$ = new Block(block);
+      $$ = new VarDecl($2, $1, $4);
   }
 
-const: INTCONST {$$ = new IntConstant(std::stoi($1));} 
-     | FLTCONST {$$ = new FloatConstant(std::stof($1));}
-     | CHRCONST {$$ = new CharConstant($1[0]);}
+const: INTCONST {$$ = new IntConstant(std::stoi($1->c_str()));} 
+     | FLTCONST {$$ = new FloatConstant(std::stof($1->c_str()));}
+     | CHRCONST {$$ = new CharConstant((*$1)[0]);}
      | STRCONST {$$ = new StrConstant($1);}
      ;
 
@@ -147,13 +149,13 @@ compound_type: STRUCT ID {$$ = new Type($2);}
 /* No annoymous struct for now */
 struct_decl: STRUCT ID LBRACE var_decl_list RBRACE SEMICOLON 
              {
-                 $$ = new StructDeclaration($2, $4);
+                 $$ = new StructDecl($2, $4);
              }
            ;
 
 var_decl_list: var_decl 
                {
-                   $$ = new std::vector<VariableDeclaration*>(1);
+                   $$ = new std::vector<VarDecl*>(1);
                    $$->push_back($1);
                }
              | var_decl_list var_decl {$1->push_back($2);$$ = $1;}
@@ -167,7 +169,7 @@ init_array_dims: init_array_dims init_array_dim
                  }
                | init_array_dim 
                  {
-                     $$ = new vector<Expression*>();
+                     $$ = new std::vector<Expr*>();
                      $$->push_back($1);
                  }
                ;
@@ -195,7 +197,7 @@ init_expr3: LPAREN init_expr RPAREN {$$ = $2;}
    x[10] = 1;          arr
    x[10].y = 1;        struct arr, var field
    (x[10].y)[10] = 1;  struct arr, arr field */
-var_ref: ID {$$ = new VariableAccess($1);}
+var_ref: ID {$$ = new VarAccess($1);}
        | var_ref LB expr RB {$$ = new ArrayAccess($1, $3);}
        | var_ref DOT ID {$$ = new StructAccess($1, $3);}
        ;
@@ -229,7 +231,7 @@ expr6: expr6 TIMES expr7 {$$ = new BinaryOperation(OP_TIMES, $1, $3);}
      | expr7 {$$ = $1;}
      ;
 expr7: NOT expr8 {$$ = new UnaryOperation(OP_NOT, $2);}
-     | MINUS expr8 {$$ = new UnaryOperation(OP_MINUS, $2);}
+     | MINUS expr8 {$$ = new UnaryOperation(OP_UMINUS, $2);}
      | expr8 {$$ = $1;}
      ;
 /* expr can be anything */
@@ -239,30 +241,30 @@ expr8: LPAREN expr RPAREN {$$ = $2;}
      | function_call {$$ = $1;}
      ;
 
-function_call: ID LPAREN RPAREN {$$ = new FunctionCall($1, nullptr);}
-             | ID LPAREN fun_call_params RPAREN {$$ = new FunctionCall($1, $3);}
+function_call: ID LPAREN RPAREN {$$ = new FunCall($1, nullptr);}
+             | ID LPAREN fun_call_params RPAREN {$$ = new FunCall($1, $3);}
              ;
 
 /* fun param can be any expr, static or dynamic */
-fun_call_params: expr {$$ = new std::vector<Expression*>(); $$->push_back($1);}
+fun_call_params: expr {$$ = new std::vector<Expr*>(); $$->push_back($1);}
                | fun_call_params COMMA expr {$1->push_back($3); $$ = $1;}
                ; 
 
 function_decl: primitive_type ID LPAREN fun_decl_params RPAREN SEMICOLON 
                {
-                   $$ = new FunctionDeclaration($2, $4, $1, nullptr);
+                   $$ = new FunDecl($2, $4, $1, nullptr);
                }
-             | primitive_type ID LPAREN fun_decl_params RPAREN LBRACE stmts RBRACE
+             | primitive_type ID LPAREN fun_decl_params RPAREN LBRACE stmt_block RBRACE
                {
-                   $$ = new FunctionDeclaration($2, $4, $1, $7);
+                   $$ = new FunDecl($2, $4, $1, $7);
                }
              | VOID ID LPAREN fun_decl_params RPAREN SEMICOLON
                {
-                   $$ = new FunctionDeclaration($2, $4, new Type(V), nullptr);
+                   $$ = new FunDecl($2, $4, new Type(V), nullptr);
                }
-             | VOID ID LPAREN fun_decl_params RPAREN LBRACE stmts RBRACE
+             | VOID ID LPAREN fun_decl_params RPAREN LBRACE stmt_block RBRACE
                {
-                   $$ = new FunctionDeclaration($2, $4, new Type(V), $7);
+                   $$ = new FunDecl($2, $4, new Type(V), $7);
                }
              | VOID ID LPAREN fun_decl_params RPAREN LBRACE RBRACE {}
              ;
@@ -270,39 +272,39 @@ function_decl: primitive_type ID LPAREN fun_decl_params RPAREN SEMICOLON
 /* int foo(int x, int y)
    int foo(int x[10])
    int foo(int x[][10]*/
-fun_decl_params: {$$ = new std::vector<VariableDeclaration*>();}
+fun_decl_params: {$$ = new std::vector<VarDecl*>();}
                | fun_decl_params COMMA fun_decl_param {$$->push_back($3); $$ = $1;}
                | fun_decl_param 
                  {
-                     $$ = new std::vector<VariableDeclaration*>(); 
+                     $$ = new std::vector<VarDecl*>(); 
                      $$->push_back($1);
                  }
                ;
 
-fun_decl_param: primitive_type ID {$$ = new VariableDeclaration($2, $1);}
+fun_decl_param: primitive_type ID {$$ = new VarDecl($2, $1, nullptr);}
               | primitive_type ID funparam_array_dims 
                 {
                     $1->setDimensions($3);
-                    $$ = new VariableDeclaration($2, $1);
+                    $$ = new VarDecl($2, $1, nullptr);
                 }
               ;
 
 /* first row dimension can be empty */
-funparam_array_dims: funparam_array_dim_first funparam_array_dim_rest {$2->push_front($1); $$ = $2;}
+funparam_array_dims: funparam_array_dim_first funparam_array_dim_rest {$2->insert($2->begin(), $1); $$ = $2;}
                    ;
 
 funparam_array_dim_first: LB RB {$$ = nullptr;}
                         | LB init_expr RB {$$ = $2;}
                         ;
 
-funparam_array_dim_rest: LB init_expr RB {$$ = new std::vector<Expression*>(); $$->push_back($2);}
+funparam_array_dim_rest: LB init_expr RB {$$ = new std::vector<Expr*>(); $$->push_back($2);}
                        | funparam_array_dim_rest LB init_expr RB {$1->push_back($3); $$ = $1;}
-                       | {$$ = new std::vector<Expression*>();}
+                       | {$$ = new std::vector<Expr*>();}
                        ;
 
 /* statements might be grouped by arbitrary blocks */
 stmts: stmts stmt {$1->push_back($2); $$ = $1;}
-     | stmt {$$ = std::vector<Statement*>(); $$->push_back($1);}
+     | stmt {$$ = new std::vector<Stmt*>(); $$->push_back($1);}
      ;
 
 stmt: assign_stmt {$$ = $1;}
