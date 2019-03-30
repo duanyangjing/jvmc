@@ -38,6 +38,7 @@
     #undef yylex
     #define yylex scanner->yylex
 
+    extern StmtList* ast;
 }
 
 /*			%define api.token.prefix {TOK_} */
@@ -89,7 +90,7 @@
 
 %%
 
-program: global_decl_list {$$ = $1;}
+program: global_decl_list {ast = $1;}
        ;
 
 global_decl_list: global_decl {$$ = new std::vector<Stmt*>(); $$->push_back($1);}
