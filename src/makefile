@@ -15,17 +15,21 @@ parser.o: parser.tab.cc parser.tab.hh scanner.hh ast.hh
 parser.tab.cc: parser.yy
 	bison -d -v parser.yy
 
+parser.tab.hh: parser.yy
+	bison -d -v parser.yy
+
 driver.o: driver.cpp driver.hh 
 	g++ -std=c++11 -o driver.o -c driver.cpp
-
-main.o: main.cpp
-	g++ -std=c++11 -o main.o -c main.cpp
 
 ast.o: ast.cpp ast.hh
 	g++ -std=c++11 -o ast.o -c ast.cpp
 
 type.o: type.cpp type.hh
 	g++ -std=c++11 -o type.o -c type.cpp
+
+main.o: main.cpp
+	g++ -std=c++11 -o main.o -c main.cpp
+
 
 clean:
 	rm -rf *.o

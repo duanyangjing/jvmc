@@ -41,6 +41,7 @@
     #undef yylex
     #define yylex scanner->yylex
 
+    extern StmtList* ast;
 }
 
 /*			%define api.token.prefix {TOK_} */

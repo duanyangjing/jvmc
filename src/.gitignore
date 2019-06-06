@@ -7,4 +7,7 @@ stack.hh
 position.hh
 location.hh
 *.yy.cc
+
+*~
+
 jvmc
