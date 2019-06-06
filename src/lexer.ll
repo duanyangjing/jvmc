@@ -14,6 +14,8 @@
   #define YY_DECL int Front::Scanner::yylex(Front::Parser::semantic_type* lval, Front::Parser::location_type* location)
   
   #define YY_USER_ACTION  loc->step(); loc->columns(yyleng);
+
+  #define yyterminate() return token::END
   
   using token = Front::Parser::token;
 %}
@@ -95,7 +97,7 @@ error           .
 
 {ID}            {
 	yylval->string = new std::string(yytext);
-    return token::ID;
+        return token::ID;
                 }
 			   
 {assign}        {return token::ASSIGN;}

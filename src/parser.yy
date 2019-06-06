@@ -8,6 +8,9 @@
 %define api.value.type variant
 %define parse.assert 
 */
+
+%define parse.error verbose
+
 %define api.namespace {Front}
 %define parser_class_name {Parser}
 
@@ -55,6 +58,7 @@
 
 /* terminal symbols. Type represents the object the lexer/parser builds for the token */
 
+%token END 0 "end of file"
 %token <string> ID INTCONST FLTCONST CHRCONST STRCONST
 %token VOID INT CHAR FLOAT
 %token IF ELSE WHILE FOR
@@ -84,12 +88,11 @@
 %type <exprs> init_array_dims fun_call_params funparam_array_dims funparam_array_dim_rest
 
 %type <vdec> fun_decl_param var_decl var_decl_init
-			
-%start program
 
 %%
 
-program: global_decl_list {$$ = $1;}
+program: global_decl_list END {$$ = $1;}
+       | END {$$ = nullptr;}
        ;
 
 global_decl_list: global_decl {$$ = new std::vector<Stmt*>(); $$->push_back($1);}
